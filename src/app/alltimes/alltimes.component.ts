@@ -1,6 +1,5 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { MenuItem, DataTable, LazyLoadEvent, DialogModule } from "primeng/primeng";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { MenuItem, DataTable, LazyLoadEvent } from "primeng/primeng";
 import Dexie from 'dexie';
 import { Observable } from "rxjs";
 import { Apollo } from 'apollo-angular';
@@ -15,13 +14,9 @@ const MAX_EXAMPLE_RECORDS = 1000;
 })
 export class AlltimesComponent implements OnInit {
 
-  @ViewChild("dt") dt : DataTable;
+  @ViewChild("dt") dt: DataTable;
 
   allTimesheetData = [];
-
-  addEntryForm: FormGroup;
-
-  displayEntryForm = false;
 
   allProjectNames = ['', 'Payroll App', 'Mobile App', 'Agile Times'];
 
@@ -33,20 +28,11 @@ export class AlltimesComponent implements OnInit {
 
   contextMenu: MenuItem[];
 
-  recordCount : number;
+  recordCount: number;
 
-  display: boolean = false;
-
-  constructor(private apollo: Apollo, private fb: FormBuilder) { }
+  constructor(private apollo: Apollo) { }
 
   ngOnInit() {
-    this.addEntryForm = this.fb.group({
-      User: ['', [Validators.required]],
-      Project: ['', [Validators.required]],
-      Category: ['', [Validators.required]],
-      StartTime: ['', [Validators.required]],
-      EndTime: ['', [Validators.required]]
-    })
 
     const AllClientsQuery = gql`
     query allTimesheets {
@@ -59,12 +45,11 @@ export class AlltimesComponent implements OnInit {
           endTime
         }
     }`;
-    
 
     const queryObservable = this.apollo.watchQuery({
 
       query: AllClientsQuery,
-      pollInterval:200
+      pollInterval: 200 
 
     }).subscribe(({ data, loading }: any) => {
 
@@ -74,40 +59,33 @@ export class AlltimesComponent implements OnInit {
     });
 
   }
-  onSaveComplete() {
-        const user = this.addEntryForm.value.User;
-        const project = this.addEntryForm.value.Project;
-        const category = this.addEntryForm.value.Category;
-        const startTime = this.addEntryForm.value.StartTime;
-        const endTime = this.addEntryForm.value.EndTime;
-    
-        const createTimesheet = gql`
-          mutation createTimesheet ($user: String!, $project: String!, $category: String!, $startTime: Int!, $endTime: Int!, $date: DateTime!) {
-            createTimesheet(user: $user, project: $project, category: $category, startTime: $startTime, endTime: $endTime, date: $date ) {
-              id
-            }
-          }
-        `;
-    
-        this.apollo.mutate({
-          mutation: createTimesheet,
-          variables: {
-            user: user,
-            project: project,
-            category: category,
-            startTime: startTime,
-            endTime: endTime,
-            date: new Date()
-          }
-        }).subscribe(({ data }) => {
-          console.log('got data', data);
-          
-        }, (error) => {
-          console.log('there was an error sending the query', error);
-        });
-        this.displayEntryForm = false;
+
+  onEditComplete(event: any) {
+
+    const timesheet: any = event.data;
+    const id = timesheet['id'];
+    const newUser = timesheet['user'];
+
+    const updateTimesheet = gql`
+    mutation updateTimesheet($id: ID!, $user: String!) {
+        updateTimesheet(id: $id, user: $user) {
+          id
+        }
       }
-      onEditComplete(editInfo) { }
-      onRowSelect(editInfo){ }
-      
+    `;
+
+    this.apollo.mutate({
+      mutation: updateTimesheet,
+      variables: {
+        id: id,
+        user: newUser
+      }
+    }).subscribe(({ data }) => {
+      console.log('got data', data);
+    }, (error) => {
+      console.log('there was an error sending the query', error);
+    });
+
+  }
+
 }
